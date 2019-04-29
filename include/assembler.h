@@ -39,7 +39,7 @@ public:
 	}
 
 	void WriteToFile(std::string const &file_path) {
-		std::ofstream file(file_path);
+		std::ofstream file(file_path, std::ios::out);
 		if(file.is_open()) {
 			for(auto const &instruction : instructions_) {
 				std::cout.fill('0');
