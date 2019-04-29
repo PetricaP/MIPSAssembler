@@ -101,7 +101,7 @@ void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t line) {
 						close_paren_index == std::string::npos) {
 					throw UnexpectedSymbolException(tokens[2], line);
 				}
-				std::string reg = tokens[2].substr(open_paren_index + 1, close_paren_index - 2);
+				std::string reg = tokens[2].substr(open_paren_index + 1, close_paren_index - open_paren_index - 1);
 				if(!IsRegister(reg)) {
 					throw UnexpectedSymbolException(tokens[2], line);
 				}
@@ -168,14 +168,12 @@ bool Parser::IsRegister(std::string const &value) {
 				if(value[2] <= '7' && value[2] >= '0') {
 					return true;
 				}
-			}
-			if(value[1] == 'a') {
-				if(value[2] <= '0' && value[2] >= '1') {
+			} else if(value[1] == 'a') {
+				if(value[2] >= '0' && value[2] <= '1') {
 					return true;
 				}
-			}
-			if(value[1] == 's') {
-				if(value[2] <= '0' && value[2] >= '7') {
+			} else if(value[1] == 's') {
+				if(value[2] >= '0' && value[2] <= '7') {
 					return true;
 				}
 			}

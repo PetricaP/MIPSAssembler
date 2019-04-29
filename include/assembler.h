@@ -4,6 +4,7 @@
 #include "instruction_factory.h"
 #include <iostream>
 #include <stdexcept>
+#include <bitset>
 
 namespace mips {
 
@@ -45,6 +46,8 @@ public:
 				std::cout.fill('0');
 				std::cout.width(8);
 				std::cout << std::hex << instruction->GetInstruction();
+				std::cout << std::endl;
+				std::cout << std::bitset<32>(instruction->GetInstruction());
 				std::cout << std::endl;
 				file.width(8);
 				file.fill('0');

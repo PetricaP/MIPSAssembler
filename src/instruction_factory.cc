@@ -31,11 +31,11 @@ std::unique_ptr<Instruction> InstructionFactory::CreateInstruction(
 						Instruction::RegisterNameToNumber(data.tokens()[2]),
 						Instruction::RegisterNameToNumber(data.tokens()[3]),
 						0);
-			} else if(data.tokens()[1] == "sub") {
+			} else if(data.tokens()[0] == "sub") {
 				RETURN_RTYPE_INSTRUCTION(SUB);
-			} else if(data.tokens()[1] == "or") {
+			} else if(data.tokens()[0] == "or") {
 				RETURN_RTYPE_INSTRUCTION(OR);
-			} else if(data.tokens()[1] == "and") {
+			} else if(data.tokens()[0] == "and") {
 				RETURN_RTYPE_INSTRUCTION(AND);
 			}
 		break;

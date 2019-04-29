@@ -136,11 +136,11 @@ private:
 class ImmediateInstruction : public Instruction {
 public:
 	ImmediateInstruction(Opcode opcode, Register rt, Register rs, uint16_t imm16) :
-		Instruction(opcode), rs_(rs), rt_(rt), imm16_(imm16) {
+		Instruction(opcode), rt_(rt), rs_(rs), imm16_(imm16) {
 		instruction_ = 0;
 		instruction_ |= opcode;
-		instruction_ |= (static_cast<uint32_t>(rs_) << 21);
 		instruction_ |= (static_cast<uint32_t>(rt_) << 16);
+		instruction_ |= (static_cast<uint32_t>(rs_) << 21);
 		instruction_ |= imm16_;
 	}
 
@@ -148,42 +148,42 @@ public:
 		return instruction_;
 	}
 
-	Register rs() const { return rs_; }
 	Register rt() const { return rt_; }
+	Register rs() const { return rs_; }
 	uint16_t imm16() const { return imm16_; }
 
 private:
 	uint32_t instruction_;
-	Register rs_;
 	Register rt_;
+	Register rs_;
 	uint16_t imm16_;
 };
 
 class ADDIInstruction : public ImmediateInstruction {
 public:
-	ADDIInstruction(Register rd, Register rt, uint16_t imm16) :
-		ImmediateInstruction(ADDI, rt, rd, imm16) {
+	ADDIInstruction(Register rt, Register rs, uint16_t imm16) :
+		ImmediateInstruction(ADDI, rt, rs, imm16) {
 	}
 };
 
 class ORIInstruction : public ImmediateInstruction {
 public:
-	ORIInstruction(Register rd, Register rt, uint16_t imm16) :
-		ImmediateInstruction(ORI, rt, rd, imm16) {
+	ORIInstruction(Register rt, Register rs, uint16_t imm16) :
+		ImmediateInstruction(ORI, rt, rs, imm16) {
 	}
 };
 
 class ANDIInstruction : public ImmediateInstruction {
 public:
-	ANDIInstruction(Register rd, Register rt, uint16_t imm16) :
-		ImmediateInstruction(ANDI, rt, rd, imm16) {
+	ANDIInstruction(Register rt, Register rs, uint16_t imm16) :
+		ImmediateInstruction(ANDI, rt, rs, imm16) {
 	}
 };
 
 class BEQInstruction : public ImmediateInstruction {
 public:
-	BEQInstruction(Register rd, Register rt, uint16_t imm16) :
-		ImmediateInstruction(BEQ, rt, rd, imm16) {
+	BEQInstruction(Register rt, Register rs, uint16_t imm16) :
+		ImmediateInstruction(BEQ, rt, rs, imm16) {
 	}
 };
 
