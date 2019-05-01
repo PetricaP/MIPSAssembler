@@ -13,7 +13,7 @@ Parser::Parser(std::ifstream &file) {
 	std::string line;
 	uint32_t line_number = 1;
 	while(std::getline(file, line)) {
-		if(line.empty()) {
+		if(line.empty() || line[0] == '#') {
 			continue;
 		}
 		std::cout << "line: " << line << std::endl;
@@ -78,7 +78,8 @@ void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t line) {
 		case Instruction::ORI:
 		case Instruction::ANDI:
 		case Instruction::BEQ:
-			if(IsRegister(tokens[1])) {
+        case Instruction::BNE:
+            if(IsRegister(tokens[1])) {
 				if(IsRegister(tokens[2])) {
 					if(IsImmediateValue(tokens[3])) {
 						instructions_.push_back(InstructionData(opcode, std::move(tokens)));
@@ -141,7 +142,10 @@ bool Parser::IsInstruction(std::string const &value, uint32_t *opcode) {
 		return true;
 	} else if(value == "beq") {
 		*opcode = Instruction::BEQ;
-		return true;
+        return true;
+    } else if(value == "bne") {
+        *opcode = Instruction::BNE;
+        return true;
 	} else if(value == "addi") {
 		*opcode = Instruction::ADDI;
 		return true;

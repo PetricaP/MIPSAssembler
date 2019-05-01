@@ -43,7 +43,9 @@ std::unique_ptr<Instruction> InstructionFactory::CreateInstruction(
 			RETURN_IMEDIATE_INSTRUCTION(ADDI);
 		case Instruction::BEQ:
 			RETURN_IMEDIATE_INSTRUCTION(BEQ);
-		case Instruction::ORI:
+        case Instruction::BNE:
+            RETURN_IMEDIATE_INSTRUCTION(BNE);
+        case Instruction::ORI:
 			RETURN_IMEDIATE_INSTRUCTION(ORI);
 		case Instruction::ANDI:
 			RETURN_IMEDIATE_INSTRUCTION(ANDI);

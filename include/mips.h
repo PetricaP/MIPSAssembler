@@ -15,8 +15,9 @@ public:
 		ORI   = 0x34000000, // 0011 01 00
 		LW    = 0x8c000000, // 1000 11 00
 		SW    = 0xac000000, // 1010 11 00
-		BEQ   = 0x10000000  // 0001 00 00
-	};
+        BEQ   = 0x10000000, // 0001 00 00
+        BNE   = 0x14000000  // 0001 01 00
+    };
 
 	enum Register {
 		ZERO = 0,
@@ -185,6 +186,13 @@ public:
 	BEQInstruction(Register rt, Register rs, uint16_t imm16) :
 		ImmediateInstruction(BEQ, rt, rs, imm16) {
 	}
+};
+
+class BNEInstruction : public ImmediateInstruction {
+public:
+    BNEInstruction(Register rt, Register rs, uint16_t imm16) :
+        ImmediateInstruction(BNE, rt, rs, imm16) {
+    }
 };
 
 class RTYPEInstruction : public Instruction {
