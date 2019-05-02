@@ -63,6 +63,8 @@ public:
 			return V0;
 		} else if(name == "$v1") {
 			return V1;
+        } else if(name == "$a0") {
+            return A0;
 		} else if(name == "$a1") {
 			return A1;
 		} else if(name =="$a2") {
@@ -123,12 +125,12 @@ public:
 
 public:
 	virtual uint32_t GetInstruction() const = 0;
-	virtual ~Instruction() {}
+	virtual ~Instruction() = default;
 
 	Opcode opcode() const { return opcode_; }
 
 protected:
-	Instruction(Opcode opcode) : opcode_(opcode) {}
+	explicit Instruction(Opcode opcode) : opcode_(opcode) {}
 
 private:
 	Opcode opcode_;
@@ -140,8 +142,8 @@ public:
 		Instruction(opcode), rt_(rt), rs_(rs), imm16_(imm16) {
 		instruction_ = 0;
 		instruction_ |= opcode;
-		instruction_ |= (static_cast<uint32_t>(rt_) << 16);
-		instruction_ |= (static_cast<uint32_t>(rs_) << 21);
+		instruction_ |= (static_cast<uint32_t>(rt_) << 16u);
+		instruction_ |= (static_cast<uint32_t>(rs_) << 21u);
 		instruction_ |= imm16_;
 	}
 
@@ -201,10 +203,10 @@ protected:
 		: Instruction(RTYPE), rs_(rs), rt_(rt), rd_(rd), shamt_(shamt), funct_(funct) {
 		instruction_ = 0;
 		instruction_ |= opcode();
-		instruction_ |= (static_cast<uint32_t>(rs_) << 21);
-		instruction_ |= (static_cast<uint32_t>(rt_) << 16);
-		instruction_ |= (static_cast<uint32_t>(rd_) << 11);
-		instruction_ |= (static_cast<uint32_t>(shamt_) << 6);
+		instruction_ |= (static_cast<uint32_t>(rs_) << 21u);
+		instruction_ |= (static_cast<uint32_t>(rt_) << 16u);
+		instruction_ |= (static_cast<uint32_t>(rd_) << 11u);
+		instruction_ |= (static_cast<uint32_t>(shamt_) << 6u);
 		instruction_ |= funct_;
 	}
 public:
@@ -272,3 +274,4 @@ public:
 }
 
 #endif // MIPS_H_
+

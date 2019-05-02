@@ -45,7 +45,7 @@ Parser::Parser(std::ifstream &file) {
 	}
 	std::cout << "\nGathered instructions:\n";
 	for(auto const &instruction : instructions_) {
-		std::cout << "Opcode: " << std::hex << (instruction.opcode() >> 26) << std::endl;
+		std::cout << "Opcode: " << std::hex << (instruction.opcode() >> 26u) << std::endl;
 		std::cout << "Tokens: ";
 		std::cout << "|";
 		for(auto const &token : instruction.tokens()) {
@@ -63,15 +63,15 @@ void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t line) {
 			if(IsRegister(tokens[1])) {
 				if(IsRegister(tokens[2])) {
 					if(IsRegister(tokens[3])) {
-						instructions_.push_back(InstructionData(opcode, std::move(tokens)));
+						instructions_.emplace_back(opcode, std::move(tokens));
 					} else {
-						throw UnexpectedSymbolException(tokens[2], line);
+						throw RegisterNameExpectedException(tokens[2], line);
 					}
 				} else {
-					throw UnexpectedSymbolException(tokens[2], line);
+					throw RegisterNameExpectedException(tokens[2], line);
 				}
 			} else {
-				throw UnexpectedSymbolException(tokens[1], line);
+				throw RegisterNameExpectedException(tokens[1], line);
 			}
 			break;
 		case Instruction::ADDI:
@@ -82,15 +82,16 @@ void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t line) {
             if(IsRegister(tokens[1])) {
 				if(IsRegister(tokens[2])) {
 					if(IsImmediateValue(tokens[3])) {
-						instructions_.push_back(InstructionData(opcode, std::move(tokens)));
+						instructions_.emplace_back(opcode, std::move(tokens));
 					} else {
-						throw UnexpectedSymbolException(tokens[2], line);
+						throw UnexpectedSymbolException(tokens[2], line,
+						                                "Expected immediate value.");
 					}
 				} else {
-					throw UnexpectedSymbolException(tokens[2], line);
+					throw RegisterNameExpectedException(tokens[2], line);
 				}
 			} else {
-				throw UnexpectedSymbolException(tokens[1], line);
+				throw RegisterNameExpectedException(tokens[1], line);
 			}
 			break;
 		case Instruction::LW:
@@ -98,13 +99,15 @@ void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t line) {
 			if(IsRegister(tokens[1])) {
 				std::size_t open_paren_index = tokens[2].find_first_of('(');
 				std::size_t close_paren_index = tokens[2].find_first_of(')');
-				if(open_paren_index == std::string::npos ||
-						close_paren_index == std::string::npos) {
-					throw UnexpectedSymbolException(tokens[2], line);
+				if(open_paren_index == std::string::npos) {
+                    throw UnexpectedSymbolException(tokens[2], line, "Expected \"(\".");
+                }
+                if(close_paren_index == std::string::npos) {
+                    throw UnexpectedSymbolException(tokens[2], line, "Expected \")\".");
 				}
 				std::string reg = tokens[2].substr(open_paren_index + 1, close_paren_index - open_paren_index - 1);
 				if(!IsRegister(reg)) {
-					throw UnexpectedSymbolException(tokens[2], line);
+					throw RegisterNameExpectedException(tokens[2], line);
 				}
 				std::string value;
 				if(open_paren_index == 0) {
@@ -115,14 +118,17 @@ void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t line) {
 				tokens.pop_back();
 				tokens.push_back(value);
 				tokens.push_back(reg);
-				instructions_.push_back(InstructionData(opcode, std::move(tokens)));
+				instructions_.emplace_back(opcode, std::move(tokens));
 			} else {
-				throw UnexpectedSymbolException(tokens[1], line);
+				throw RegisterNameExpectedException(tokens[1], line);
 			}
 			break;
+		    default:
+                throw UnexpectedSymbolException(tokens[0], line,
+                                                "Invalid opcode for instruction.");
 		}
 	} else {
-		throw UnexpectedSymbolException(tokens[0], line);
+		throw UnexpectedSymbolException(tokens[0], line, "Invalid instruction.");
 	}
 }
 
@@ -134,6 +140,9 @@ bool Parser::IsInstruction(std::string const &value, uint32_t *opcode) {
 	} else if(value == "sub") {
 		*opcode = Instruction::RTYPE;
 		return true;
+    } else if(value == "slt") {
+        *opcode = Instruction::RTYPE;
+        return true;
 	} else if(value == "or") {
 		*opcode = Instruction::RTYPE;
 		return true;
