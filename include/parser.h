@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <vector>
+#include <unordered_map>
 
 namespace mips {
 
@@ -50,9 +51,10 @@ private:
 	static bool IsInstruction(std::string const &value, uint32_t *opcode);
 	static bool IsRegister(std::string const &value);
 	static bool IsImmediateValue(std::string const &value);
-	void ProcessTokens(std::vector<std::string> &&tokens, uint32_t line);
+	void ProcessTokens(std::vector<std::string> &&tokens, uint32_t line_number);
 
 	std::vector<InstructionData> instructions_;
+	std::unordered_map<std::string, uint32_t> labels_;
 };
 
 }
