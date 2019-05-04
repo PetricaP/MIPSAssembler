@@ -35,5 +35,8 @@ void Assembler::WriteToFile(std::string const &file_path) {
     }
 }
 
+FileNotFoundException::FileNotFoundException(const std::string &file_path) {
+    message_ = "File " + file_path + " was not found.";
+}
 
 }

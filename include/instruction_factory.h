@@ -1,7 +1,7 @@
 #ifndef INSTRUCTION_FACTORY_H_
 #define INSTRUCTION_FACTORY_H_
 
-#include "mips.h"
+#include "instructions.h"
 #include "parser.h"
 #include <memory>
 

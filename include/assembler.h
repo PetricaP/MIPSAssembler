@@ -10,13 +10,11 @@ namespace mips {
 
 class FileNotFoundException : public std::exception {
 public:
-	explicit FileNotFoundException(std::string const &file_path) {
-		message_ = "File " + file_path + " was not found.";
-	}
+    explicit FileNotFoundException(std::string const &file_path);
 
-	const char *what() const noexcept override {
-		return message_.c_str();
-	}
+    const char *what() const noexcept {
+        return message_.c_str();
+    }
 
 private:
 	std::string message_;
@@ -24,9 +22,9 @@ private:
 
 class Assembler {
 public:
-	explicit Assembler(std::string const &file_path);
+    explicit Assembler(std::string const &file_path);
 
-	void WriteToFile(std::string const &file_path);
+    void WriteToFile(std::string const &file_path);
 
 private:
 	std::string file_path_;

@@ -1,189 +1,226 @@
 #include "parser.h"
-#include "mips.h"
+#include "instructions.h"
 #include <string>
 #include <sstream>
 #include <cassert>
 #include <vector>
 #include <iostream>
 #include <stdexcept>
+#include <algorithm>
+
+#ifndef CODE_SEGMENT_OFFSET
+static constexpr uint32_t CODE_SEGMENT_OFFSET = 0x40000000;
+#endif
 
 namespace mips {
 
 Parser::Parser(std::ifstream &file) {
-	std::string line;
-	uint32_t line_number = 1;
-
-    while(std::getline(file, line)) {
-        size_t index = line.find_first_of(':');
-        if(index != std::string::npos) {
-            for (size_t i = index + 1; i < line.length(); ++i) {
-                if (!isspace(line[i])) {
-                    throw UnexpectedSymbolException(line, line_number,
-                                                    "Unexpected symbol after label.");
-                }
-            }
-            for (size_t i = 0; i < index; ++i) {
-                if (!isalnum(line[i])) {
-                    throw UnexpectedSymbolException(line, line_number,
-                                                    "Label name can only contain alpha-numeric characters");
-                }
-            }
-            std::string label_name = line.substr(0, index);
-            std::cout << "Label " + label_name + " on instruction " + std::to_string(line_number + 1) << std::endl;
-            labels_[label_name] = line_number + 1;
-        } else {
-            if(line.empty() || line[0] == '#') {
-                continue;
-            }
-            ++line_number;
-        }
-    }
-
-    line_number = 0;
-    file.clear();
-	file.seekg(0, std::ios::beg);
-	while(std::getline(file, line)) {
-		if(line.empty() || line[0] == '#'
-           || line.find_first_of(':') != std::string::npos) {
-			continue;
-		}
-		std::cout << "line: " << line << std::endl;
-
-        std::size_t current;
-        std::size_t previous = 0;
-        current = line.find_first_of(" ,;");
-        std::vector<std::string> tokens;
-        while (current != std::string::npos) {
-            tokens.push_back(line.substr(previous, current - previous));
-            previous = current + 1;
-            current = line.find_first_of(" ,;", previous);
-        }
-        tokens.push_back(line.substr(previous, current - previous));
-        for (auto it = tokens.begin(); it != tokens.end();) {
-            if (it->empty()) {
-                tokens.erase(it);
-            } else {
-                ++it;
-            }
-        }
-        std::cout << "Tokens: ";
-        for (auto &token : tokens) {
-            std::cout << token << " ";
-        }
-        std::cout << std::endl;
-
-        ProcessTokens(std::move(tokens), line_number);
-		++line_number;
-	}
-	std::cout << "\nGathered instructions:\n";
-	for(auto const &instruction : instructions_) {
-		std::cout << "Opcode: " << std::hex << (instruction.opcode() >> 26u) << std::endl;
-		std::cout << "Tokens: ";
-		std::cout << "|";
-		for(auto const &token : instruction.tokens()) {
-			std::cout << token << "|";
-		}
-		std::cout << std::endl;
-	}
+    CollectLabelsAndFunctions(file);
+    CollectInstructions(file);
 }
 
-void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t line_number) {
+void Parser::ParseRTypeInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
+{
+    if(tokens.size() > 4) {
+        if(tokens[5][0] != '#') {
+            throw UnexpectedSymbolException(tokens[5], instruction_number);
+        }
+    }
+    if(IsRegister(tokens[1])) {
+        if(IsRegister(tokens[2])) {
+            if(IsRegister(tokens[3])) {
+                instructions_.emplace_back(opcode, std::move(tokens));
+            } else {
+                throw RegisterNameExpectedException(tokens[2], instruction_number);
+            }
+        } else {
+            throw RegisterNameExpectedException(tokens[2], instruction_number);
+        }
+    } else {
+        throw RegisterNameExpectedException(tokens[1], instruction_number);
+    }
+}
+
+void Parser::ParseImmediateInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
+{
+    if(tokens.size() > 4) {
+        if(tokens[4][0] != '#') {
+            throw UnexpectedSymbolException(tokens[4], instruction_number);
+        }
+    }
+    if(IsRegister(tokens[1])) {
+        if(IsRegister(tokens[2])) {
+            if(IsImmediateValue(tokens[3])) {
+                instructions_.emplace_back(opcode, std::move(tokens));
+            } else {
+                throw UnexpectedSymbolException(tokens[2], instruction_number,
+                                                "Expected immediate value.");
+            }
+        } else {
+            throw RegisterNameExpectedException(tokens[2], instruction_number);
+        }
+    } else {
+        throw RegisterNameExpectedException(tokens[1], instruction_number);
+    }
+}
+
+void Parser::ParseBranchInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
+{
+    if(tokens.size() > 4) {
+        if(tokens[4][0] != '#') {
+            throw UnexpectedSymbolException(tokens[4], instruction_number);
+        }
+    }
+    if(IsRegister(tokens[1])) {
+        if(IsRegister(tokens[2])) {
+            if (IsImmediateValue(tokens[3])) {
+                instructions_.emplace_back(opcode, std::move(tokens));
+            } else {
+                auto found = labels_.find(tokens[3]);
+                if(found != labels_.end()) {
+                    auto pair = *found;
+                    tokens[3] = std::to_string(static_cast<int32_t>(pair.second) - static_cast<int32_t>(instruction_number) - 2);
+                    instructions_.emplace_back(opcode, std::move(tokens));
+                } else {
+                    throw UnexpectedSymbolException(tokens[2], instruction_number,
+                                                    "Expected immediate value or label name.");
+                }
+            }
+        } else {
+            throw RegisterNameExpectedException(tokens[2], instruction_number);
+        }
+    } else {
+        throw RegisterNameExpectedException(tokens[1], instruction_number);
+    }
+}
+
+void Parser::ParseMemoryInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
+{
+    if(tokens.size() > 3) {
+        if(tokens[3][0] != '#') {
+            throw UnexpectedSymbolException(tokens[3], instruction_number);
+        }
+    }
+    if(IsRegister(tokens[1])) {
+        std::size_t open_paren_index = tokens[2].find_first_of('(');
+        std::size_t close_paren_index = tokens[2].find_first_of(')');
+        if(open_paren_index == std::string::npos) {
+            throw UnexpectedSymbolException(tokens[2], instruction_number, "Expected \"(\".");
+        }
+        if(close_paren_index == std::string::npos) {
+            throw UnexpectedSymbolException(tokens[2], instruction_number, "Expected \")\".");
+        }
+        std::string reg = tokens[2].substr(open_paren_index + 1, close_paren_index - open_paren_index - 1);
+        if(!IsRegister(reg)) {
+            throw RegisterNameExpectedException(tokens[2], instruction_number);
+        }
+        std::string value;
+        if(open_paren_index == 0) {
+            value = "0";
+        } else {
+            value = tokens[2].substr(0, open_paren_index);
+        }
+        tokens.pop_back();
+        tokens.push_back(value);
+        tokens.push_back(reg);
+        instructions_.emplace_back(opcode, std::move(tokens));
+    } else {
+        throw RegisterNameExpectedException(tokens[1], instruction_number);
+    }
+}
+
+void Parser::ParseJumpInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
+{
+    if(tokens.size() > 2) {
+        if(tokens[2][0] != '#') {
+            throw UnexpectedSymbolException(tokens[2], instruction_number);
+        }
+    }
+    if(IsImmediateValue(tokens[1])) {
+        instructions_.emplace_back(opcode, std::move(tokens));
+    } else {
+        auto value = labels_.find(tokens[1]);
+        if(value != labels_.end()) {
+            tokens[1] = std::to_string(static_cast<int32_t>(value->second)
+                                       - static_cast<int32_t>(instruction_number) - 2);
+        } else {
+            throw UnexpectedSymbolException(tokens[1], instruction_number,
+                                            "Expected immediate value or label name.");
+        }
+    }
+}
+
+void Parser::ParseJALInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
+{
+    if(tokens.size() > 2) {
+        if(tokens[2][0] != '#') {
+            throw UnexpectedSymbolException(tokens[2], instruction_number);
+        }
+    }
+    if(IsImmediateValue(tokens[1])) {
+        instructions_.emplace_back(opcode, std::move(tokens));
+    } else {
+        auto value = functions_.find(tokens[1]);
+        if(value != functions_.end()) {
+            tokens[1] = std::to_string(value->second);
+            instructions_.emplace_back(opcode, std::move(tokens));
+        } else {
+            throw UnexpectedSymbolException(tokens[1], instruction_number,
+                                            "Expected immediate value or function name.");
+        }
+    }
+}
+
+void Parser::ParseJRInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
+{
+    if(tokens.size() > 2) {
+        if(tokens[2][0] != '#') {
+            throw UnexpectedSymbolException(tokens[2], instruction_number);
+        }
+    }
+    if(IsRegister(tokens[1])) {
+        instructions_.emplace_back(opcode, std::move(tokens));
+    } else {
+        throw RegisterNameExpectedException(tokens[1], instruction_number);
+    }
+}
+
+void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t instruction_number) {
 	uint32_t opcode;
 	if(IsInstruction(tokens[0], &opcode)) {
 		switch(opcode) {
 		case Instruction::RTYPE:
-			if(IsRegister(tokens[1])) {
-				if(IsRegister(tokens[2])) {
-					if(IsRegister(tokens[3])) {
-						instructions_.emplace_back(opcode, std::move(tokens));
-					} else {
-						throw RegisterNameExpectedException(tokens[2], line_number);
-					}
-				} else {
-					throw RegisterNameExpectedException(tokens[2], line_number);
-				}
-			} else {
-				throw RegisterNameExpectedException(tokens[1], line_number);
-			}
-			break;
-		case Instruction::ADDI:
+            ParseRTypeInstruction(opcode, std::move(tokens), instruction_number);
+        break;
+        case Instruction::ADDI:
 		case Instruction::ORI:
 		case Instruction::ANDI:
-            if(IsRegister(tokens[1])) {
-				if(IsRegister(tokens[2])) {
-					if(IsImmediateValue(tokens[3])) {
-						instructions_.emplace_back(opcode, std::move(tokens));
-					} else {
-						throw UnexpectedSymbolException(tokens[2], line_number,
-						                                "Expected immediate value.");
-					}
-				} else {
-					throw RegisterNameExpectedException(tokens[2], line_number);
-				}
-			} else {
-				throw RegisterNameExpectedException(tokens[1], line_number);
-			}
+        case Instruction::SLTI:
+            ParseImmediateInstruction(opcode, std::move(tokens), instruction_number);
 			break;
         case Instruction::BEQ:
         case Instruction::BNE:
-            if(IsRegister(tokens[1])) {
-                if(IsRegister(tokens[2])) {
-                    if (IsImmediateValue(tokens[3])) {
-                        instructions_.emplace_back(opcode, std::move(tokens));
-                    } else {
-                        auto found = labels_.find(tokens[3]);
-                        if(found != labels_.end()) {
-                            auto pair = *found;
-                            tokens[3] = std::to_string(static_cast<int32_t>(pair.second) - static_cast<int32_t>(line_number) - 3);
-                            std::cout << "Calculated offset: " << static_cast<int32_t>(pair.second) - static_cast<int32_t>(line_number) - 3 << std::endl;
-                            instructions_.emplace_back(opcode, std::move(tokens));
-                        } else {
-                            throw UnexpectedSymbolException(tokens[2], line_number,
-                                                            "Expected immediate value or label name.");
-                        }
-                    }
-                } else {
-                    throw RegisterNameExpectedException(tokens[2], line_number);
-                }
-            } else {
-                throw RegisterNameExpectedException(tokens[1], line_number);
-            }
+            ParseBranchInstruction(opcode, std::move(tokens), instruction_number);
             break;
 		case Instruction::LW:
 		case Instruction::SW:
-			if(IsRegister(tokens[1])) {
-				std::size_t open_paren_index = tokens[2].find_first_of('(');
-				std::size_t close_paren_index = tokens[2].find_first_of(')');
-				if(open_paren_index == std::string::npos) {
-                    throw UnexpectedSymbolException(tokens[2], line_number, "Expected \"(\".");
-                }
-                if(close_paren_index == std::string::npos) {
-                    throw UnexpectedSymbolException(tokens[2], line_number, "Expected \")\".");
-				}
-				std::string reg = tokens[2].substr(open_paren_index + 1, close_paren_index - open_paren_index - 1);
-				if(!IsRegister(reg)) {
-					throw RegisterNameExpectedException(tokens[2], line_number);
-				}
-				std::string value;
-				if(open_paren_index == 0) {
-					value = "0";
-				} else {
-					value = tokens[2].substr(0, open_paren_index);
-				}
-				tokens.pop_back();
-				tokens.push_back(value);
-				tokens.push_back(reg);
-				instructions_.emplace_back(opcode, std::move(tokens));
-			} else {
-				throw RegisterNameExpectedException(tokens[1], line_number);
-			}
+            ParseMemoryInstruction(opcode, std::move(tokens), instruction_number);
 			break;
-		    default:
-                throw UnexpectedSymbolException(tokens[0], line_number,
+        case Instruction::J:
+            ParseJumpInstruction(opcode, std::move(tokens), instruction_number);
+            break;
+        case Instruction::JAL:
+            ParseJALInstruction(opcode, std::move(tokens), instruction_number);
+            break;
+        case Instruction::JR:
+            ParseJRInstruction(opcode, std::move(tokens), instruction_number);
+            break;
+            default:
+                throw UnexpectedSymbolException(tokens[0], instruction_number,
                                                 "Invalid opcode for instruction.");
 		}
 	} else {
-		throw UnexpectedSymbolException(tokens[0], line_number, "Invalid instruction.");
+        throw UnexpectedSymbolException(tokens[0], instruction_number, "Invalid instruction.");
 	}
 }
 
@@ -219,14 +256,26 @@ bool Parser::IsInstruction(std::string const &value, uint32_t *opcode) {
 	} else if(value == "andi") {
 		*opcode = Instruction::ANDI;
 		return true;
-	} else if(value == "sw") {
+    } else if(value == "slti") {
+        *opcode = Instruction::SLTI;
+        return true;
+    } else if(value == "sw") {
 		*opcode = Instruction::SW;
 		return true;
 	} else if(value == "lw") {
 		*opcode = Instruction::LW;
 		return true;
-	}
-	return false;
+    } else if(value == "jal") {
+        *opcode = Instruction::JAL;
+        return true;
+    } else if(value == "j") {
+        *opcode = Instruction::J;
+        return true;
+    } else if(value == "jr") {
+        *opcode = Instruction::JR;
+        return true;
+    }
+    return false;
 }
 
 bool Parser::IsRegister(std::string const &value) {
@@ -240,11 +289,17 @@ bool Parser::IsRegister(std::string const &value) {
 				if(value[2] >= '0' && value[2] <= '1') {
 					return true;
 				}
-			} else if(value[1] == 's') {
-				if(value[2] >= '0' && value[2] <= '7') {
+            } else if(value[1] == 'v') {
+                if(value[2] >= '0' && value[2] <= '1') {
+                    return true;
+                }
+            } else if(value[1] == 's') {
+                if((value[2] >= '0' && value[2] <= '7') || value[2] == 'p') {
 					return true;
 				}
-			}
+            } else if(value[1] == 'r' && value[2] == 'a') {
+                return true;
+            }
 		}
 	} else if (value == "$zero") {
 		return true;
@@ -281,4 +336,108 @@ bool Parser::IsImmediateValue(std::string const &value) {
 	return true;
 }
 
+void Parser::CollectLabelsAndFunctions(std::ifstream &file) {
+    std::string line;
+    uint32_t instruction_number = 0;
+
+    std::vector<std::pair<std::string, uint32_t>> labels_before_function;
+    size_t index;
+    while(std::getline(file, line)) {
+        index = line.find_first_of(':');
+        if(index != std::string::npos) {
+            for (size_t i = index + 1; i < line.length(); ++i) {
+                if (!isspace(line[i])) {
+                    throw UnexpectedSymbolException(line, instruction_number,
+                                                    "Unexpected symbol after label.");
+                }
+            }
+            size_t start_index = 0;
+            while(isspace(line[start_index])) {
+                ++start_index;
+            }
+            for (size_t i = start_index; i < index; ++i) {
+                if (!(isalnum(line[i]) || line[i] == '_')) {
+                    throw UnexpectedSymbolException(line, instruction_number,
+                                                    "Label name can only contain alpha-numeric characters and underscores");
+                }
+            }
+            std::string label_name = line.substr(start_index, index - start_index);
+            labels_before_function.emplace_back(label_name, instruction_number);
+            labels_[label_name] = instruction_number + 1;
+        } else {
+            index = line.find(".end ");
+            if(index != std::string::npos) {
+                if(index != 0) {
+                    throw UnexpectedSymbolException(line, instruction_number);
+                }
+                size_t end_index;
+                for(end_index = line.length() - 1; end_index > 0 && isspace(line[end_index]); --end_index);
+
+                std::string function_name = line.substr(5, end_index - 4);
+                // label_name is the last label found
+                auto pair = std::find_if(labels_before_function.begin(), labels_before_function.end(),
+                                         [&function_name](std::pair<std::string, uint32_t> const &value) {
+                                             return value.first == function_name;
+                                         });
+                if(pair != labels_before_function.end()) {
+                    functions_[function_name] = CODE_SEGMENT_OFFSET + pair->second * 4;
+                    labels_before_function.clear();
+                } else {
+                    throw UnexpectedSymbolException(line, instruction_number, "Expected name of previously defined label.");
+                }
+            } else {
+                if(line.empty() || line[0] == '#') {
+                    continue;
+                }
+                ++instruction_number;
+            }
+        }
+    }
+
+}
+
+void Parser::CollectInstructions(std::ifstream &file) {
+	std::string line;
+    uint32_t instruction_number = 0;
+    file.clear();
+	file.seekg(0, std::ios::beg);
+	while(std::getline(file, line)) {
+		if(line.empty() || line[0] == '#'
+           || line.find_first_of(':') != std::string::npos
+           || line.find(".end") != std::string::npos) {
+			continue;
+		}
+
+        std::size_t current;
+        std::size_t previous = 0;
+        current = line.find_first_of("\t ,;");
+        std::vector<std::string> tokens;
+        while (current != std::string::npos) {
+            tokens.push_back(line.substr(previous, current - previous));
+            previous = current + 1;
+            current = line.find_first_of("\t ,;", previous);
+        }
+        tokens.push_back(line.substr(previous, current - previous));
+        for (auto it = tokens.begin(); it != tokens.end();) {
+            if (it->empty()) {
+                tokens.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        ProcessTokens(std::move(tokens), instruction_number);
+        ++instruction_number;
+	}
+}
+
+UnexpectedSymbolException::UnexpectedSymbolException(const std::string &symbol, uint32_t line, const std::string &info) {
+    message_ = "Unexpected symbol: \"" + symbol + "\" on line "
+            + std::to_string(line) + ";" + info;
+}
+
+const char *UnexpectedSymbolException::what() const noexcept {
+    return message_.c_str();
+}
+
 } // namespace mips
+

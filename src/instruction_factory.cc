@@ -21,6 +21,11 @@ namespace mips {
 						static_cast<uint16_t>(std::strtoul(data.tokens()[2].c_str(), nullptr, 0)),\
 						Instruction::RegisterNameToNumber(data.tokens()[3]))
 
+#define RETURN_JUMP_INSTRUCTION(TYPE)\
+            return std::make_unique<TYPE##Instruction>(\
+                        static_cast<uint32_t>(\
+                        std::strtoul(data.tokens()[1].c_str(), nullptr, 0)))
+
 std::unique_ptr<Instruction> InstructionFactory::CreateInstruction(
 		const Parser::InstructionData &data) {
 	switch(data.opcode()) {
@@ -45,11 +50,22 @@ std::unique_ptr<Instruction> InstructionFactory::CreateInstruction(
 			RETURN_IMMEDIATE_INSTRUCTION(ORI);
 		case Instruction::ANDI:
 			RETURN_IMMEDIATE_INSTRUCTION(ANDI);
-		case Instruction::LW:
+        case Instruction::SLTI:
+            RETURN_IMMEDIATE_INSTRUCTION(SLTI);
+        case Instruction::LW:
 			RETURN_MEMORY_INSTRUCTION(LW);
 		case Instruction::SW:
 			RETURN_MEMORY_INSTRUCTION(SW);
-	}
+        case Instruction::JAL:
+            RETURN_JUMP_INSTRUCTION(JAL);
+        case Instruction::J:
+            RETURN_JUMP_INSTRUCTION(J);
+        case Instruction::JR:
+            return std::make_unique<JRInstruction>(
+                        Instruction::RegisterNameToNumber(data.tokens()[1]));
+        default:
+            throw "Invalid opcode";
+    }
 	return nullptr;
 }
 
