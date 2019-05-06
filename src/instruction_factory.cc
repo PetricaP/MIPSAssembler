@@ -38,9 +38,12 @@ std::unique_ptr<Instruction> InstructionFactory::CreateInstruction(
 				RETURN_RTYPE_INSTRUCTION(OR);
 			} else if(data.tokens()[0] == "and") {
 				RETURN_RTYPE_INSTRUCTION(AND);
-			}
-		break;
-		case Instruction::ADDI:
+            } else if(data.tokens()[0] == "jr") {
+            return std::make_unique<JRInstruction>(
+                        Instruction::RegisterNameToNumber(data.tokens()[1]));
+            }
+        break;
+        case Instruction::ADDI:
 			RETURN_IMMEDIATE_INSTRUCTION(ADDI);
 		case Instruction::BEQ:
 			RETURN_IMMEDIATE_INSTRUCTION(BEQ);
@@ -60,9 +63,6 @@ std::unique_ptr<Instruction> InstructionFactory::CreateInstruction(
             RETURN_JUMP_INSTRUCTION(JAL);
         case Instruction::J:
             RETURN_JUMP_INSTRUCTION(J);
-        case Instruction::JR:
-            return std::make_unique<JRInstruction>(
-                        Instruction::RegisterNameToNumber(data.tokens()[1]));
         default:
             throw "Invalid opcode";
     }

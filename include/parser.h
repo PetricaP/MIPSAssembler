@@ -53,10 +53,6 @@ private:
 	void ProcessTokens(std::vector<std::string> &&tokens, uint32_t line_number);
 	void CollectLabelsAndFunctions(std::ifstream &file);
     void CollectInstructions(std::ifstream &file);
-
-	std::vector<InstructionData> instructions_;
-	std::unordered_map<std::string, uint32_t> labels_;
-    std::unordered_map<std::string, uint32_t> functions_;
     void ParseRTypeInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
     void ParseImmediateInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
     void ParseBranchInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
@@ -64,6 +60,10 @@ private:
     void ParseJumpInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
     void ParseJALInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
     void ParseJRInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
+
+    std::vector<InstructionData> instructions_;
+    std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> labels_;
+    std::unordered_map<std::string, uint32_t> functions_;
 };
 
 }

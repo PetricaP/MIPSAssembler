@@ -1,0 +1,1 @@
+/usr/bin/c++  -g  -rdynamic CMakeFiles/assembler.dir/src/assembler.cc.o CMakeFiles/assembler.dir/src/instruction_factory.cc.o CMakeFiles/assembler.dir/src/main.cc.o CMakeFiles/assembler.dir/src/parser.cc.o  -o ../bin/assembler 

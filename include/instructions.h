@@ -20,7 +20,6 @@ public:
         BNE   = 0x14000000, // 0001 01 00
         JAL   = 0x0c000000, // 0000 11 00
         J     = 0x08000000, // 0000 10 00
-        JR    = 0x06000000  // 0000 01 00
     };
 
 	enum Register {
@@ -202,20 +201,17 @@ public:
     JInstruction(uint32_t offset);
 };
 
-class JRInstruction : public Instruction {
+class JRInstruction : public RTYPEInstruction {
 public:
     JRInstruction(Register reg);
 
     Register reg() { return reg_; }
 
-    uint32_t GetInstruction() const override;
-
 private:
     Register reg_;
-    uint32_t instruction_;
 };
 
-}
+} // namespace mips
 
 #endif // MIPS_H_
 

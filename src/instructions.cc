@@ -158,12 +158,6 @@ JALInstruction::JALInstruction(uint32_t offset) : JumpInstruction(JAL, offset) {
 
 JInstruction::JInstruction(uint32_t offset) : JumpInstruction(J, offset) {}
 
-JRInstruction::JRInstruction(Instruction::Register reg) : Instruction(JR) {
-    instruction_ = opcode() | (static_cast<uint32_t>(reg) << 20u) | 0x8u;
-}
-
-uint32_t JRInstruction::GetInstruction() const {
-    return instruction_;
-}
+JRInstruction::JRInstruction(Instruction::Register reg) : RTYPEInstruction(ZERO, reg, ZERO, 0, 0x8) {}
 
 } // namespace mips

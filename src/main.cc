@@ -5,6 +5,7 @@
 int main(int argc, char const *argv[]) {
 	std::string src_file;
 	std::string dest_file;
+
 	if(argc == 1) {
 		src_file = "test.s";
 		dest_file = "code.mem";
@@ -16,16 +17,13 @@ int main(int argc, char const *argv[]) {
 		std::cerr << "Usage: assembler <input_file> -o <output_file>\n";
 		std::exit(EXIT_FAILURE);
 	}
+
 	try {
 		mips::Assembler assembler(src_file);
 		assembler.WriteToFile(dest_file);
-	} catch(mips::FileNotFoundException &e) {
+    } catch(std::exception const &e) {
 		std::cerr << "Error: ";
 		std::cerr << e.what() << std::endl;
 		exit(EXIT_FAILURE);
-	} catch(mips::UnexpectedSymbolException &e) {
-		std::cerr << "Error: ";
-		std::cerr << e.what() << std::endl;
-		exit(EXIT_FAILURE);
-	}
+    }
 }

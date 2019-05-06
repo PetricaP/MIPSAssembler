@@ -9,7 +9,7 @@
 #include <algorithm>
 
 #ifndef CODE_SEGMENT_OFFSET
-static constexpr uint32_t CODE_SEGMENT_OFFSET = 0x40000000;
+static constexpr uint32_t CODE_SEGMENT_OFFSET = 0x00400000;
 #endif
 
 namespace mips {
@@ -22,7 +22,7 @@ Parser::Parser(std::ifstream &file) {
 void Parser::ParseRTypeInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
 {
     if(tokens.size() > 4) {
-        if(tokens[5][0] != '#') {
+        if(tokens[4][0] != '#') {
             throw UnexpectedSymbolException(tokens[5], instruction_number);
         }
     }
@@ -64,7 +64,8 @@ void Parser::ParseImmediateInstruction(uint32_t opcode, std::vector<std::string>
     }
 }
 
-void Parser::ParseBranchInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
+void Parser::ParseBranchInstruction(uint32_t opcode, std::vector<std::string> &&tokens,
+                                    uint32_t instruction_number)
 {
     if(tokens.size() > 4) {
         if(tokens[4][0] != '#') {
@@ -78,8 +79,9 @@ void Parser::ParseBranchInstruction(uint32_t opcode, std::vector<std::string> &&
             } else {
                 auto found = labels_.find(tokens[3]);
                 if(found != labels_.end()) {
-                    auto pair = *found;
-                    tokens[3] = std::to_string(static_cast<int32_t>(pair.second) - static_cast<int32_t>(instruction_number) - 2);
+                    auto const &pair = *found;
+                    tokens[3] = std::to_string(static_cast<int32_t>(pair.second.first)
+                                               - static_cast<int32_t>(instruction_number) - 2);
                     instructions_.emplace_back(opcode, std::move(tokens));
                 } else {
                     throw UnexpectedSymbolException(tokens[2], instruction_number,
@@ -94,13 +96,15 @@ void Parser::ParseBranchInstruction(uint32_t opcode, std::vector<std::string> &&
     }
 }
 
-void Parser::ParseMemoryInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
+void Parser::ParseMemoryInstruction(uint32_t opcode, std::vector<std::string> &&tokens,
+                                    uint32_t instruction_number)
 {
     if(tokens.size() > 3) {
         if(tokens[3][0] != '#') {
             throw UnexpectedSymbolException(tokens[3], instruction_number);
         }
     }
+    tokens.erase(tokens.begin() + 3, tokens.end());
     if(IsRegister(tokens[1])) {
         std::size_t open_paren_index = tokens[2].find_first_of('(');
         std::size_t close_paren_index = tokens[2].find_first_of(')');
@@ -141,8 +145,8 @@ void Parser::ParseJumpInstruction(uint32_t opcode, std::vector<std::string> &&to
     } else {
         auto value = labels_.find(tokens[1]);
         if(value != labels_.end()) {
-            tokens[1] = std::to_string(static_cast<int32_t>(value->second)
-                                       - static_cast<int32_t>(instruction_number) - 2);
+            tokens[1] = std::to_string(static_cast<int32_t>(value->second.second));
+            instructions_.emplace_back(opcode, std::move(tokens));
         } else {
             throw UnexpectedSymbolException(tokens[1], instruction_number,
                                             "Expected immediate value or label name.");
@@ -190,7 +194,11 @@ void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t instructi
 	if(IsInstruction(tokens[0], &opcode)) {
 		switch(opcode) {
 		case Instruction::RTYPE:
-            ParseRTypeInstruction(opcode, std::move(tokens), instruction_number);
+            if(tokens[0] == "jr") {
+                ParseJRInstruction(opcode, std::move(tokens), instruction_number);
+            } else {
+                ParseRTypeInstruction(opcode, std::move(tokens), instruction_number);
+            }
         break;
         case Instruction::ADDI:
 		case Instruction::ORI:
@@ -212,12 +220,9 @@ void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t instructi
         case Instruction::JAL:
             ParseJALInstruction(opcode, std::move(tokens), instruction_number);
             break;
-        case Instruction::JR:
-            ParseJRInstruction(opcode, std::move(tokens), instruction_number);
-            break;
-            default:
-                throw UnexpectedSymbolException(tokens[0], instruction_number,
-                                                "Invalid opcode for instruction.");
+        default:
+            throw UnexpectedSymbolException(tokens[0], instruction_number,
+                                            "Invalid opcode for instruction.");
 		}
 	} else {
         throw UnexpectedSymbolException(tokens[0], instruction_number, "Invalid instruction.");
@@ -272,7 +277,7 @@ bool Parser::IsInstruction(std::string const &value, uint32_t *opcode) {
         *opcode = Instruction::J;
         return true;
     } else if(value == "jr") {
-        *opcode = Instruction::JR;
+        *opcode = Instruction::RTYPE;
         return true;
     }
     return false;
@@ -363,7 +368,7 @@ void Parser::CollectLabelsAndFunctions(std::ifstream &file) {
             }
             std::string label_name = line.substr(start_index, index - start_index);
             labels_before_function.emplace_back(label_name, instruction_number);
-            labels_[label_name] = instruction_number + 1;
+            labels_[label_name] = std::pair(instruction_number + 1, CODE_SEGMENT_OFFSET + instruction_number * 4);
         } else {
             index = line.find(".end ");
             if(index != std::string::npos) {
