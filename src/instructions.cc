@@ -3,70 +3,32 @@
 namespace mips {
 
 Instruction::Register Instruction::RegisterNameToNumber(const std::string &name){
-    if(name == "$zero") {
-        return ZERO;
-    } else if(name == "$at") {
-        return AT;
-    } else if(name == "$v0") {
-        return V0;
-    } else if(name == "$v1") {
-        return V1;
-    } else if(name == "$a0") {
-        return A0;
-    } else if(name == "$a1") {
-        return A1;
-    } else if(name =="$a2") {
-        return A2;
-    } else if(name =="$a3") {
-        return A3;
-    } else if(name =="$t0") {
-        return T0;
-    } else if(name =="$t1") {
-        return T1;
-    } else if(name =="$t2") {
-        return T2;
-    } else if(name =="$t3") {
-        return T3;
-    } else if(name =="$t4") {
-        return T4;
-    } else if(name =="$t5") {
-        return T5;
-    } else if(name =="$t6") {
-        return T6;
-    } else if(name =="$t7") {
-        return T7;
-    } else if(name =="$s0") {
-        return S0;
-    } else if(name =="$s1") {
-        return S1;
-    } else if(name =="$s2") {
-        return S2;
-    } else if(name =="$s3") {
-        return S3;
-    } else if(name =="$s4") {
-        return S4;
-    } else if(name =="$s5") {
-        return S5;
-    } else if(name =="$s6") {
-        return S6;
-    } else if(name =="$s7") {
-        return S7;
-    } else if(name =="$t8") {
-        return T8;
-    } else if(name =="$t9") {
-        return T9;
-    } else if(name =="$k0") {
-        return K0;
-    } else if(name =="$k1") {
-        return K1;
-    } else if(name =="$gp") {
-        return GP;
-    } else if(name =="$sp") {
-        return SP;
-    } else if(name =="$fp") {
-        return FP;
-    } else if(name =="$ra") {
-        return RA;
+    static constexpr char register_strings[][4] = {"$at", "$v0", "$v1", "$a0",
+                                                   "$a1", "$a2", "$a3", "$t0",
+                                                   "$t1", "$t2", "$t3", "$t4",
+                                                   "$t5", "$t6", "$t7", "$s0",
+                                                   "$s1", "$s2", "$s3", "$s4",
+                                                   "$s5", "$s6", "$s7", "$t8",
+                                                   "$t9", "$k0", "$k1", "$gp",
+                                                   "$sp", "$fp", "$ra"};
+
+    static constexpr Instruction::Register registers[] = {AT, V0, V1, A0,
+                                                          A1, A2, A3, T0,
+                                                          T1, T2, T3, T4,
+                                                          T5, T6, T7, S0,
+                                                          S1, S2, S3, S4,
+                                                          S5, S6, S7, T8,
+                                                          T9, K0, K1, GP,
+                                                          SP, FP, RA};
+
+    static constexpr size_t n_registers = sizeof(registers) / sizeof(registers[0]);
+
+    static_assert(n_registers == sizeof(register_strings) / sizeof(register_strings[0]));
+
+    for(size_t i = 0; i < n_registers; ++i) {
+        if(name == register_strings[i]) {
+            return registers[i];
+        }
     }
     return ZERO;
 }

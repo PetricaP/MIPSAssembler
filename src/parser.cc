@@ -19,8 +19,7 @@ Parser::Parser(std::ifstream &file) {
     CollectInstructions(file);
 }
 
-void Parser::ParseRTypeInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
-{
+void Parser::ParseRTypeInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number) {
     if(tokens.size() > 4) {
         if(tokens[4][0] != '#') {
             throw UnexpectedSymbolException(tokens[5], instruction_number);
@@ -41,8 +40,7 @@ void Parser::ParseRTypeInstruction(uint32_t opcode, std::vector<std::string> &&t
     }
 }
 
-void Parser::ParseImmediateInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number)
-{
+void Parser::ParseImmediateInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number) {
     if(tokens.size() > 4) {
         if(tokens[4][0] != '#') {
             throw UnexpectedSymbolException(tokens[4], instruction_number);
@@ -65,8 +63,7 @@ void Parser::ParseImmediateInstruction(uint32_t opcode, std::vector<std::string>
 }
 
 void Parser::ParseBranchInstruction(uint32_t opcode, std::vector<std::string> &&tokens,
-                                    uint32_t instruction_number)
-{
+                                    uint32_t instruction_number) {
     if(tokens.size() > 4) {
         if(tokens[4][0] != '#') {
             throw UnexpectedSymbolException(tokens[4], instruction_number);
@@ -231,54 +228,27 @@ void Parser::ProcessTokens(std::vector<std::string> &&tokens, uint32_t instructi
 
 bool Parser::IsInstruction(std::string const &value, uint32_t *opcode) {
 	assert(opcode != nullptr);
-	if(value == "add") {
-		*opcode = Instruction::RTYPE;
-		return true;
-	} else if(value == "sub") {
-		*opcode = Instruction::RTYPE;
-		return true;
-    } else if(value == "slt") {
-        *opcode = Instruction::RTYPE;
-        return true;
-	} else if(value == "or") {
-		*opcode = Instruction::RTYPE;
-		return true;
-	} else if(value == "and") {
-		*opcode = Instruction::RTYPE;
-		return true;
-	} else if(value == "beq") {
-		*opcode = Instruction::BEQ;
-        return true;
-    } else if(value == "bne") {
-        *opcode = Instruction::BNE;
-        return true;
-	} else if(value == "addi") {
-		*opcode = Instruction::ADDI;
-		return true;
-	} else if(value == "ori") {
-		*opcode = Instruction::ORI;
-		return true;
-	} else if(value == "andi") {
-		*opcode = Instruction::ANDI;
-		return true;
-    } else if(value == "slti") {
-        *opcode = Instruction::SLTI;
-        return true;
-    } else if(value == "sw") {
-		*opcode = Instruction::SW;
-		return true;
-	} else if(value == "lw") {
-		*opcode = Instruction::LW;
-		return true;
-    } else if(value == "jal") {
-        *opcode = Instruction::JAL;
-        return true;
-    } else if(value == "j") {
-        *opcode = Instruction::J;
-        return true;
-    } else if(value == "jr") {
-        *opcode = Instruction::RTYPE;
-        return true;
+    static constexpr char instruction_strings[][5] = {"add", "sub", "slt", "or", "and", "beq",
+                                                      "bne", "addi", "ori", "andi", "slti", "sw",
+                                                      "lw", "jal", "j", "jr"};
+
+    static constexpr Instruction::Opcode opcodes[] = {Instruction::RTYPE, Instruction::RTYPE, Instruction::RTYPE,
+                                                      Instruction::RTYPE, Instruction::RTYPE, Instruction::BEQ,
+                                                      Instruction::BNE, Instruction::ADDI, Instruction::ORI,
+                                                      Instruction::ANDI, Instruction::SLTI, Instruction::SW,
+                                                      Instruction::LW, Instruction::JAL, Instruction::J,
+                                                      Instruction::RTYPE };
+
+    static constexpr size_t n_instructions = sizeof(opcodes) / sizeof(opcodes[0]);
+
+    static_assert(sizeof(instruction_strings) / sizeof(instruction_strings[0]) == n_instructions,
+            "Number of instruction strings doesn't match number of instruction opcodes.");
+
+    for(size_t i = 0; i < n_instructions; ++i) {
+        if(value == instruction_strings[i]) {
+            *opcode = opcodes[i];
+            return true;
+        }
     }
     return false;
 }
@@ -388,7 +358,8 @@ void Parser::CollectLabelsAndFunctions(std::ifstream &file) {
                     functions_[function_name] = CODE_SEGMENT_OFFSET + pair->second * 4;
                     labels_before_function.clear();
                 } else {
-                    throw UnexpectedSymbolException(line, instruction_number, "Expected name of previously defined label.");
+                    throw UnexpectedSymbolException(line, instruction_number,
+                                                    "Expected name of previously defined label.");
                 }
             } else {
                 if(line.empty() || line[0] == '#') {
@@ -412,6 +383,11 @@ void Parser::CollectInstructions(std::ifstream &file) {
            || line.find(".end") != std::string::npos) {
 			continue;
 		}
+        uint32_t index = 0;
+        while(isspace(line[index])) {
+            ++index;
+        }
+        if(line[index] == '#') continue;
 
         std::size_t current;
         std::size_t previous = 0;
@@ -437,7 +413,7 @@ void Parser::CollectInstructions(std::ifstream &file) {
 
 UnexpectedSymbolException::UnexpectedSymbolException(const std::string &symbol, uint32_t line, const std::string &info) {
     message_ = "Unexpected symbol: \"" + symbol + "\" on line "
-            + std::to_string(line) + ";" + info;
+            + std::to_string(line) + ((info.empty()) ? "" : "\n" + info);
 }
 
 const char *UnexpectedSymbolException::what() const noexcept {
