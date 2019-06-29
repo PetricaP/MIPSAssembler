@@ -60,7 +60,7 @@ public:
     static Register RegisterNameToNumber(std::string const &name);
 
 public:
-	virtual uint32_t GetInstruction() const = 0;
+    virtual uint32_t GetRepresentation() const = 0;
     virtual ~Instruction();
 
     Opcode opcode() const { return opcode_; }
@@ -74,7 +74,7 @@ private:
 
 class ImmediateInstruction : public Instruction {
 public:
-    uint32_t GetInstruction() const override;
+    uint32_t GetRepresentation() const override;
 
     Register rt() const { return rt_; }
     Register rs() const { return rs_; }
@@ -128,7 +128,7 @@ public:
     uint8_t shamt() const { return shamt_; }
     uint8_t funct() const { return funct_; }
 
-    uint32_t GetInstruction() const override;
+    uint32_t GetRepresentation() const override;
 
 protected:
     RTYPEInstruction(Register rd, Register rs, Register rt, uint8_t shamt, uint8_t funct);
@@ -181,7 +181,7 @@ public:
 
 class JumpInstruction : public Instruction {
 public:
-    uint32_t GetInstruction() const override;
+    uint32_t GetRepresentation() const override;
 
 protected:
     JumpInstruction(Opcode opcode, uint32_t offset);

@@ -50,16 +50,16 @@ private:
 	static bool IsInstruction(std::string const &value, uint32_t *opcode);
 	static bool IsRegister(std::string const &value);
 	static bool IsImmediateValue(std::string const &value);
-	void ProcessTokens(std::vector<std::string> &&tokens, uint32_t line_number);
+    void ProcessTokens(std::vector<std::string> &&tokens, uint32_t line_number, uint32_t instruction_number);
 	void CollectLabelsAndFunctions(std::ifstream &file);
     void CollectInstructions(std::ifstream &file);
-    void ParseRTypeInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
-    void ParseImmediateInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
-    void ParseBranchInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
-    void ParseMemoryInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
-    void ParseJumpInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
-    void ParseJALInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
-    void ParseJRInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t instruction_number);
+    void ParseRTypeInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t line_number);
+    void ParseImmediateInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t line_number);
+    void ParseBranchInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t line_number, uint32_t instruction_number);
+    void ParseMemoryInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t line_number);
+    void ParseJumpInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t line_number);
+    void ParseJALInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t line_number);
+    void ParseJRInstruction(uint32_t opcode, std::vector<std::string> &&tokens, uint32_t line_number);
 
     std::vector<InstructionData> instructions_;
     std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> labels_;

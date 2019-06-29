@@ -1,3 +1,4 @@
+#include "algorithms.h"
 #include "instructions.h"
 
 namespace mips {
@@ -25,10 +26,9 @@ Instruction::Register Instruction::RegisterNameToNumber(const std::string &name)
 
     static_assert(n_registers == sizeof(register_strings) / sizeof(register_strings[0]));
 
-    for(size_t i = 0; i < n_registers; ++i) {
-        if(name == register_strings[i]) {
-            return registers[i];
-        }
+    auto pval = std::find(std::begin(register_strings), std::end(register_strings), name);
+    if(pval != std::end(register_strings)) {
+        return registers[pval - std::begin(register_strings)];
     }
     return ZERO;
 }
@@ -46,7 +46,7 @@ ImmediateInstruction::ImmediateInstruction(Instruction::Opcode opcode, Instructi
     instruction_ |= imm16_;
 }
 
-uint32_t ImmediateInstruction::GetInstruction() const {
+uint32_t ImmediateInstruction::GetRepresentation() const {
     return instruction_;
 }
 
@@ -85,7 +85,7 @@ RTYPEInstruction::RTYPEInstruction(Instruction::Register rd, Instruction::Regist
     instruction_ |= funct_;
 }
 
-uint32_t RTYPEInstruction::GetInstruction() const { return instruction_; }
+uint32_t RTYPEInstruction::GetRepresentation() const { return instruction_; }
 
 ADDInstruction::ADDInstruction(Instruction::Register rd, Instruction::Register rs, Instruction::Register rt, uint8_t shamt)
     : RTYPEInstruction(rd, rs, rt, shamt, 0x20) {}
@@ -112,7 +112,7 @@ JumpInstruction::JumpInstruction(Instruction::Opcode opcode, uint32_t offset) : 
     instruction_ = static_cast<uint32_t>(opcode) | (offset_ & 0x03ffffffu);
 }
 
-uint32_t JumpInstruction::GetInstruction() const {
+uint32_t JumpInstruction::GetRepresentation() const {
     return instruction_;
 }
 
